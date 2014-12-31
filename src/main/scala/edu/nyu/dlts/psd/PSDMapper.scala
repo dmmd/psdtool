@@ -14,25 +14,26 @@ trait PsdMapper {
 
   implicit val formats = DefaultFormats
   case class Layer(label: String, left: Int, top: Int, width: Int, height: Int)
-  case class PsdFile(name: String, path: String, width: Int, height: Int, layers: Map[String, Layer])
+  case class PsdFile(name: String, path: String, width: Int, height: Int, colorSpace: String, layers: Map[String, Layer])
   
-  def parsePSDFile(file: File): PsdFile = {
-    val sb = new StringBuilder
-    val psdDump = ("psdump -f json " + file.getAbsolutePath) lines_! ProcessLogger(line => ())
-    psdDump.foreach{i => sb.append(i)}
-    getPSDFile(sb.toString) 
+  def getPSDFile(file: File): PsdFile = {
+    val psdump = getPsdump(file)
+    val exifdump = getExif(file)
+    parsePSDFile(psdump, exifdump)
   }
 
-  def getPSDFile(psdString: String): PsdFile = {
-    val f = parse(psdString)
-    val psd = new PsdFile(
-      (f \ "name").extract[String],
-      (f \ "name").extract[String].split("/").last,
-      (f \ "width").extract[Int],
-      (f \ "height").extract[Int],
-      getLayers(f \ "children")
+  def parsePSDFile(psdump: String, exifdump: String): PsdFile = {
+    val psd = parse(psdump)
+    val exif = parse(exifdump)
+    val psdFile = new PsdFile(
+      (psd \ "name").extract[String],
+      (psd \ "name").extract[String].split("/").last,
+      (psd \ "width").extract[Int],
+      (psd \ "height").extract[Int],
+      (exif \ "DeviceModel").extract[String],
+      getLayers(psd \ "children")
     )
-    psd
+    psdFile
   }
 
   def getLayers(children: JValue): Map[String, Layer] = {
@@ -48,6 +49,20 @@ trait PsdMapper {
       map += layer.label -> layer
     }
     map
+  }
+
+  def getExif(file: File): String = {
+    val sb = new StringBuilder  
+    val exif = ("exiftool -j " + file.getAbsolutePath) lines_! ProcessLogger(line => ())
+    exif.foreach{i => sb.append(i)}
+    sb.toString
+  }
+
+  def getPsdump(file: File): String = {
+    val sb = new StringBuilder
+    val psdDump = ("psdump -f json " + file.getAbsolutePath) lines_! ProcessLogger(line => ())
+    psdDump.foreach{i => sb.append(i)}
+    sb.toString
   }
 }
 
