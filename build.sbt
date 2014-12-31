@@ -11,5 +11,6 @@ test in assembly := {}
 mainClass in assembly := Some("edu.nyu.dlts.psd.Main")
 
 libraryDependencies ++= Seq(
-  "org.json4s" %% "json4s-native" % "3.2.11"
+  "org.json4s" %% "json4s-native" % "3.2.11",
+  "commons-cli" % "commons-cli" % "1.2"
 )
